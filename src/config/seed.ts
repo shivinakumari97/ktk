@@ -33,13 +33,37 @@ export const DEFAULT_DELIVERY: DeliveryConfig = {
   ],
 };
 
+/**
+ * Known Karnataka/Bengaluru RSS feeds, seeded enabled so a fresh deploy pulls
+ * REAL headlines on the first "Run now" with no extra config. A bad/changed URL
+ * just errors and is skipped (graceful), so this is low-risk. Manage them in the
+ * dashboard. (Provide your own via RSS_FEEDS to add more.)
+ */
+const DEFAULT_RSS_FEEDS = [
+  { url: "https://www.thehindu.com/news/national/karnataka/feeder/default.rss", outlet: "The Hindu — Karnataka" },
+  { url: "https://timesofindia.indiatimes.com/rssfeeds/-2128833038.cms", outlet: "Times of India — Bengaluru" },
+  { url: "https://www.deccanherald.com/rss-feed/52831", outlet: "Deccan Herald — Karnataka" },
+];
+
 function defaultSources(): SourceRecord[] {
   const sources: SourceRecord[] = [
-    // Always-available offline demo source.
-    { id: "mock-demo", type: "mock", name: "Demo (mock)", config: {}, enabled: true },
+    // Always-available offline demo source (disabled by default so real feeds
+    // drive the dashboard; enable it for an offline/no-network demo).
+    { id: "mock-demo", type: "mock", name: "Demo (mock)", config: {}, enabled: false },
   ];
 
-  // Seed RSS feeds from env, if provided.
+  // Seed real Karnataka RSS sources out of the box.
+  for (const { url, outlet } of DEFAULT_RSS_FEEDS) {
+    sources.push({
+      id: `rss-${hostOf(url)}`,
+      type: "rss",
+      name: outlet,
+      config: { feedUrl: url, outlet, fetchFull: true },
+      enabled: true,
+    });
+  }
+
+  // Seed any extra RSS feeds from env.
   for (const url of env.rssFeeds) {
     sources.push({
       id: `rss-${randomUUID().slice(0, 8)}`,
