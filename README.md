@@ -176,6 +176,31 @@ the alert as `skipped`.
 
 ---
 
+## Deploy (Render)
+
+This is a stateful, always-on service (in-process cron + SQLite file), so it fits
+a persistent host rather than serverless. A `render.yaml` Blueprint is included.
+
+1. Push the repo to GitHub (done).
+2. Render → **New + → Blueprint** → select this repo. Render reads `render.yaml`
+   and provisions one web service (dashboard + API + scheduler in one process).
+3. Set the secret env vars in the Render dashboard (they're `sync: false`, so not
+   in git): `ANTHROPIC_API_KEY`, Twilio creds, `ALERT_TO`, etc. With none set,
+   it runs in mock mode and the dashboard still works.
+4. Open the service URL → the dashboard. Use **Run now** to trigger a poll.
+
+**Free-tier caveats:** no persistent disk (SQLite lives on ephemeral `/tmp` and
+resets on each deploy/restart), and the instance sleeps after ~15 min idle, which
+pauses the cron poller until the next request wakes it. To persist data and keep
+polling continuous, upgrade to a paid instance and enable the `disk` block in
+`render.yaml` (instructions are in the file).
+
+> **Why not Vercel?** Serverless has no always-on process (in-process cron won't
+> run) and an ephemeral, read-only filesystem (SQLite won't persist). Running
+> there would require swapping SQLite→Postgres, refactoring to a serverless
+> handler, and using Vercel Cron — a real rework. Render/Railway/Fly run the
+> current architecture as-is.
+
 ## Data model
 
 `Source` · `NewsItem` · `Assessment` · `Alert` · `WatchlistConfig` ·

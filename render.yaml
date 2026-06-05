@@ -1,0 +1,60 @@
+# Render Blueprint — one service that runs the dashboard, API, and the polling
+# scheduler in a single always-on Node process (the app's native shape).
+#
+# Deploy: push this repo, then in Render → "New +" → "Blueprint" and point it at
+# the repo. Render reads this file. Fill the secret env vars in the dashboard
+# (they're marked `sync: false` so they are NOT stored in git).
+#
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: ktk-monitor
+    runtime: node
+    plan: free                         # free tier: fine for testing (see disk note)
+    buildCommand: npm ci && npm run build
+    startCommand: npm run serve        # node dist/index.js
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: TZ
+        value: Asia/Kolkata
+      - key: POLL_CRON
+        value: "*/15 * * * *"
+      - key: SCHEDULER_ENABLED
+        value: "true"
+      # Free tier has NO persistent disk, so keep the DB on the ephemeral
+      # filesystem. It resets on each deploy/restart — fine for a live test.
+      # For persistence, see the `disk` block below.
+      - key: DATABASE_PATH
+        value: /tmp/ktk.sqlite
+      - key: ASSESSOR_MODEL
+        value: claude-haiku-4-5
+      # ---- Secrets: set these in the Render dashboard (not committed) ----
+      - key: ANTHROPIC_API_KEY        # unset => deterministic mock assessor
+        sync: false
+      - key: NEWSAPI_KEY              # unset => NewsAPI source skipped
+        sync: false
+      - key: RSS_FEEDS               # comma-separated feed URLs to seed
+        sync: false
+      - key: TWILIO_ACCOUNT_SID      # unset => notifiers log instead of send
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_SMS_FROM
+        sync: false
+      - key: TWILIO_WHATSAPP_FROM
+        sync: false
+      - key: ALERT_TO               # destination number(s), E.164, comma-separated
+        sync: false
+
+    # ── Persistence (optional) ──────────────────────────────────────────────
+    # Free instances cannot mount disks and spin down after ~15 min idle (which
+    # pauses the cron poller; the "Run now" button still works on wake). To keep
+    # the SQLite DB across deploys/restarts: upgrade `plan` to `starter`,
+    # uncomment the disk below, and change DATABASE_PATH above to /data/ktk.sqlite
+    # disk:
+    #   name: ktk-data
+    #   mountPath: /data
+    #   sizeGB: 1
