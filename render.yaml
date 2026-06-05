@@ -11,7 +11,7 @@ services:
     name: ktk-monitor
     runtime: node
     plan: free                         # free tier: fine for testing (see disk note)
-    buildCommand: npm ci && npm run build
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm run serve        # node dist/index.js
     healthCheckPath: /api/health
     autoDeployTrigger: commit
